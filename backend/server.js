@@ -172,7 +172,7 @@ app.get("/getNote/:noteId", express.json(), async (req, res) => {
   });
 
 app.get("/getAllNotes/", express.json(), async (req, res) => {
-      try {
+    try {
   
       // Verify the JWT from the request headers
       const token = req.headers.authorization.split(" ")[1];
@@ -213,6 +213,52 @@ app.delete("/deleteNote/:noteId", express.json(), async (req, res) => {
       } else {
         res.status(404).json({ response: "Could not find document to delete.", });
       }
+
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+})
+
+app.patch("/editNote/:noteId", express.json(), async (req, res) => {
+  try {
+    
+    const noteId = req.params.noteId;
+    if (!ObjectId.isValid(noteId)) {
+      return res.status(400).json({ error: "Invalid note ID." });
+    }
+
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+
+      const collection = db.collection(COLLECTIONS.notes);
+      // const result = await collection.updateOne({ _id: new ObjectId(noteId), username: decoded.username }, { $set: { 'title': req.body.title, 'content': req.body.content } });
+      
+      let updateParams = {};
+
+      if (req.body.title) {
+        updateParams.title = req.body.title;
+      }
+      if (req.body.content) {
+        updateParams.content = req.body.content;
+      }
+
+      const result = await collection.updateOne({ _id: new ObjectId(noteId), username: decoded.username }, { $set: updateParams });
+
+      console.log(result);
+
+      if (result.modifiedCount == 1) {
+        res.status(200).json({ response: "Document with ID " + noteId + " properly updated.", });
+      } else if (result.matchedCount == 1) {
+        res.status(200).json({ response: "No updates needed.", });
+      } else {
+        res.status(404).json({ response: "Could not find note for current user.", });
+      } 
+
 
     });
 
